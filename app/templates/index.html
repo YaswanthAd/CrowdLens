@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrowdLens – Social Sentiment Rankings</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <!-- ===== Header ===== -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">🎬</span>
+        <span class="logo-text">CrowdLens</span>
+      </div>
+      <p class="tagline">Ranked by the crowd · Powered by sentiment analysis</p>
+    </div>
+  </header>
+
+  <!-- ===== Main ===== -->
+  <main class="container">
+
+    <!-- Search Section -->
+    <section class="search-section card">
+      <h2>Analyse a Title</h2>
+      <p class="section-desc">Enter any movie, TV show, or anime to fetch public reviews and analyze the crowd sentiment.</p>
+      <div class="search-bar">
+        <input id="searchInput" type="text" placeholder="e.g. Dune: Part Two, Attack on Titan…" autocomplete="off" />
+        <button id="searchBtn">Analyse</button>
+      </div>
+      <div id="searchResult" class="result-panel hidden"></div>
+    </section>
+
+    <!-- Trending / Rankings Section -->
+    <section class="rankings-section">
+      <div class="rankings-header">
+        <h2>🏆 Trending Rankings</h2>
+        <button id="refreshBtn" class="btn-secondary">Refresh</button>
+      </div>
+      <p class="section-desc">All titles ranked by aggregated social sentiment score. Higher score = more positive crowd reception.</p>
+      <div id="rankingsContainer" class="rankings-grid">
+        <div class="skeleton-loader">Loading rankings…</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== Footer ===== -->
+  <footer class="site-footer">
+    <p>CrowdLens &mdash; Aggregating social media sentiment for movies, TV shows &amp; anime.</p>
+    <p class="footer-note">Data sourced from Reddit and built-in review dataset. Sentiment analysis powered by VADER.</p>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
