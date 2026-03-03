@@ -6,6 +6,8 @@ class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.ReadOnlyField()
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+    is_followed_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -14,7 +16,8 @@ class UserSerializer(serializers.ModelSerializer):
             "header_image", "location", "website", "twitter_handle",
             "letterboxd_username", "mal_username", "is_private",
             "total_titles_watched", "total_reviews",
-            "followers_count", "following_count", "date_joined",
+            "followers_count", "following_count", "reviews_count",
+            "is_followed_by_me", "date_joined",
         ]
         read_only_fields = ["id", "date_joined", "total_titles_watched", "total_reviews"]
 
@@ -23,6 +26,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_following_count(self, obj):
         return obj.following.count()
+
+    def get_reviews_count(self, obj):
+        return obj.review_set.count()
+
+    def get_is_followed_by_me(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return Follow.objects.filter(follower=request.user, following=obj).exists()
+        return False
 
 
 class UserMinimalSerializer(serializers.ModelSerializer):

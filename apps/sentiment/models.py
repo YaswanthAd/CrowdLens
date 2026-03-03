@@ -6,6 +6,7 @@ class SentimentMention(models.Model):
         REDDIT = "reddit", "Reddit"
         TWITTER = "twitter", "Twitter/X"
         YOUTUBE = "youtube", "YouTube"
+        REVIEW = "review", "User Review"
 
     class Sentiment(models.TextChoices):
         POSITIVE = "positive", "Positive"

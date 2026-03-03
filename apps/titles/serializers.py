@@ -24,15 +24,16 @@ class TitleCastSerializer(serializers.ModelSerializer):
 
 class TitleListSerializer(serializers.ModelSerializer):
     poster_full_url = serializers.ReadOnlyField()
+    backdrop_full_url = serializers.ReadOnlyField()
     genres = GenreSerializer(many=True, read_only=True)
 
     class Meta:
         model = Title
         fields = [
             "id", "title", "slug", "title_type", "release_date",
-            "poster_full_url", "genres", "senti_score",
-            "senti_positive_pct", "senti_negative_pct",
-            "avg_user_rating", "total_user_ratings",
+            "poster_full_url", "backdrop_full_url", "genres",
+            "senti_score", "senti_positive_pct", "senti_negative_pct",
+            "avg_user_rating", "total_user_ratings", "total_user_reviews",
             "tmdb_rating", "runtime_minutes",
         ]
 
