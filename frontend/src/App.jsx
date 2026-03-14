@@ -15,6 +15,11 @@ import Watchlist from './pages/Watchlist'
 import Feed from './pages/Feed'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
+import Lists from './pages/Lists'
+import ListNew from './pages/ListNew'
+import ListDetail from './pages/ListDetail'
+import ListEdit from './pages/ListEdit'
+import UserLists from './pages/UserLists'
 
 export default function App() {
   return (
@@ -39,6 +44,12 @@ export default function App() {
                 <Route path="/watchlist" element={<Watchlist />} />
                 <Route path="/feed" element={<Feed />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/lists" element={<Lists />} />
+                <Route path="/lists/new" element={<ListNew />} />
+                <Route path="/lists/:id" element={<ListDetail />} />
+                <Route path="/lists/:id/edit" element={<ListEdit />} />
+                <Route path="/profile/:username/lists" element={<UserLists />} />
+                <Route path="/user/:username/lists" element={<UserLists />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

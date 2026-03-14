@@ -102,6 +102,16 @@ class UserListEntry(models.Model):
         ordering = ["order"]
 
 
+class UserListLike(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="list_likes")
+    user_list = models.ForeignKey(UserList, on_delete=models.CASCADE, related_name="likes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "user_list_likes"
+        unique_together = ("user", "user_list")
+
+
 class ActivityLog(models.Model):
     class ActivityType(models.TextChoices):
         WATCHED = "watched", "Watched"
