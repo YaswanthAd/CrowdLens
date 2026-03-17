@@ -1,4 +1,7 @@
+import calendar
+from datetime import date
 from django.db.models import Max
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -218,6 +221,175 @@ def unlike_list(request, pk):
         user_list.likes_count = max(0, user_list.likes_count - 1)
         user_list.save(update_fields=["likes_count"])
     return Response({"likes_count": user_list.likes_count})
+
+
+# ── Recap ─────────────────────────────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def recap(request):
+    year = int(request.query_params.get("year", timezone.now().year))
+
+    from django.db.models import Q
+    reviews = (
+        Review.objects
+        .filter(user=request.user)
+        .filter(
+            Q(watched_date__year=year) |
+            Q(watched_date__isnull=True, created_at__year=year)
+        )
+        .select_related("title")
+        .prefetch_related("title__genres")
+    )
+
+    if not reviews.exists():
+        return Response({"year": year, "empty": True})
+
+    # ── Totals ──
+    total = reviews.count()
+    total_minutes = sum(r.title.runtime_minutes or 0 for r in reviews)
+    total_hours = round(total_minutes / 60)
+
+    # ── Type breakdown ──
+    type_counts = {}
+    type_ratings = {}
+    for r in reviews:
+        t = r.title.title_type
+        type_counts[t] = type_counts.get(t, 0) + 1
+        if r.rating is not None:
+            type_ratings.setdefault(t, []).append(r.rating)
+    type_avg_ratings = {t: round(sum(v) / len(v), 2) for t, v in type_ratings.items()}
+    highest_rated_type = max(type_avg_ratings, key=type_avg_ratings.get) if type_avg_ratings else None
+
+    # ── Ratings ──
+    rated = [r.rating for r in reviews if r.rating is not None]
+    avg_rating = round(sum(rated) / len(rated), 2) if rated else None
+    perfect_scores = sum(1 for r in rated if r == 5.0)
+    low_scores = sum(1 for r in rated if r <= 2.0)
+
+    rating_distribution = {}
+    for r in rated:
+        key = str(r)
+        rating_distribution[key] = rating_distribution.get(key, 0) + 1
+
+    # ── Monthly patterns ──
+    month_counts = {}
+    month_ratings = {}
+    for r in reviews:
+        d = r.watched_date or r.created_at.date()
+        m = d.month
+        month_counts[m] = month_counts.get(m, 0) + 1
+        if r.rating is not None:
+            month_ratings.setdefault(m, []).append(r.rating)
+
+    month_avg = {m: round(sum(v) / len(v), 2) for m, v in month_ratings.items() if len(v) >= 2}
+    most_active_month = max(month_counts, key=month_counts.get) if month_counts else None
+    harshest_month = min(month_avg, key=month_avg.get) if month_avg else None
+    most_generous_month = max(month_avg, key=month_avg.get) if month_avg else None
+
+    months_chart = [
+        {"month": calendar.month_abbr[m], "count": month_counts.get(m, 0)}
+        for m in range(1, 13)
+    ]
+
+    # ── Day of week ──
+    dow_counts = [0] * 7
+    for r in reviews:
+        d = r.watched_date or r.created_at.date()
+        dow_counts[d.weekday()] += 1
+    dow_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    most_active_dow = dow_names[dow_counts.index(max(dow_counts))]
+
+    # ── Genres ──
+    genre_counts = {}
+    genre_ratings = {}
+    for r in reviews:
+        for g in r.title.genres.all():
+            genre_counts[g.name] = genre_counts.get(g.name, 0) + 1
+            if r.rating is not None:
+                genre_ratings.setdefault(g.name, []).append(r.rating)
+    top_genre = max(genre_counts, key=genre_counts.get) if genre_counts else None
+    genre_avg_ratings = {g: round(sum(v) / len(v), 2) for g, v in genre_ratings.items() if len(v) >= 2}
+    highest_rated_genre = max(genre_avg_ratings, key=genre_avg_ratings.get) if genre_avg_ratings else None
+    lowest_rated_genre = min(genre_avg_ratings, key=genre_avg_ratings.get) if len(genre_avg_ratings) > 1 else None
+    top_genres_chart = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+
+    # ── Discovery lag ──
+    today = date.today()
+    lags = []
+    for r in reviews:
+        if r.title.release_date:
+            watched = r.watched_date or r.created_at.date()
+            lag = (watched - r.title.release_date).days
+            if lag >= 0:
+                lags.append(lag)
+    avg_lag_days = round(sum(lags) / len(lags)) if lags else None
+
+    # ── Era / decade ──
+    decade_counts = {}
+    for r in reviews:
+        if r.title.release_date:
+            decade = (r.title.release_date.year // 10) * 10
+            decade_counts[decade] = decade_counts.get(decade, 0) + 1
+    top_decade = max(decade_counts, key=decade_counts.get) if decade_counts else None
+
+    # ── Oldest title watched ──
+    with_release = [(r.title.title, r.title.release_date.year) for r in reviews if r.title.release_date]
+    oldest_title = min(with_release, key=lambda x: x[1]) if with_release else None
+
+    # ── Reviews written ──
+    reviews_written = sum(1 for r in reviews if r.review_text and r.review_text.strip())
+
+    # ── Personality tag ──
+    if avg_rating and avg_rating >= 4.0:
+        personality = ("Easy Pleaser", "You love almost everything you watch.")
+    elif avg_rating and avg_rating <= 2.5:
+        personality = ("Tough Crowd", "You hold your 5 stars like a secret.")
+    elif perfect_scores == 0:
+        personality = ("The Holdout", "You haven't given a single perfect score.")
+    elif perfect_scores >= 5:
+        personality = ("Generous Soul", "You hand out perfect scores like candy.")
+    elif highest_rated_type == "anime":
+        personality = ("Anime Head", "Anime is your highest-rated category by far.")
+    elif highest_rated_type == "tv":
+        personality = ("Binge Machine", "You rate TV above everything else.")
+    else:
+        personality = ("Film Purist", "Movies are where your heart is.")
+
+    return Response({
+        "year": year,
+        "empty": False,
+        "total": total,
+        "total_hours": total_hours,
+        "total_minutes": total_minutes,
+        "type_counts": type_counts,
+        "type_avg_ratings": type_avg_ratings,
+        "highest_rated_type": highest_rated_type,
+        "avg_rating": avg_rating,
+        "perfect_scores": perfect_scores,
+        "low_scores": low_scores,
+        "rating_distribution": rating_distribution,
+        "most_active_month": calendar.month_name[most_active_month] if most_active_month else None,
+        "most_active_month_count": month_counts.get(most_active_month) if most_active_month else None,
+        "harshest_month": calendar.month_name[harshest_month] if harshest_month else None,
+        "harshest_month_avg": month_avg.get(harshest_month) if harshest_month else None,
+        "most_generous_month": calendar.month_name[most_generous_month] if most_generous_month else None,
+        "most_generous_month_avg": month_avg.get(most_generous_month) if most_generous_month else None,
+        "most_active_dow": most_active_dow,
+        "months_chart": months_chart,
+        "top_genre": top_genre,
+        "top_genre_count": genre_counts.get(top_genre) if top_genre else None,
+        "highest_rated_genre": highest_rated_genre,
+        "highest_rated_genre_avg": genre_avg_ratings.get(highest_rated_genre) if highest_rated_genre else None,
+        "lowest_rated_genre": lowest_rated_genre,
+        "lowest_rated_genre_avg": genre_avg_ratings.get(lowest_rated_genre) if lowest_rated_genre else None,
+        "top_genres_chart": [{"genre": g, "count": c} for g, c in top_genres_chart],
+        "avg_lag_days": avg_lag_days,
+        "top_decade": top_decade,
+        "oldest_title": {"title": oldest_title[0], "year": oldest_title[1]} if oldest_title else None,
+        "reviews_written": reviews_written,
+        "personality": {"label": personality[0], "description": personality[1]},
+    })
 
 
 # ── Activity Feed ──────────────────────────────────────────────────────────────

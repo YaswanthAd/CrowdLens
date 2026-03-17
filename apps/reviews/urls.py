@@ -19,4 +19,5 @@ urlpatterns = [
     path("lists/<int:pk>/unlike/", views.unlike_list, name="user-list-unlike"),
 
     path("feed/", views.ActivityFeedView.as_view(), name="activity-feed"),
+    path("recap/", views.recap, name="recap"),
 ]

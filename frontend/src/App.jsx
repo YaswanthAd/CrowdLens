@@ -20,6 +20,7 @@ import ListNew from './pages/ListNew'
 import ListDetail from './pages/ListDetail'
 import ListEdit from './pages/ListEdit'
 import UserLists from './pages/UserLists'
+import Recap from './pages/Recap'
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
                 <Route path="/lists/:id/edit" element={<ListEdit />} />
                 <Route path="/profile/:username/lists" element={<UserLists />} />
                 <Route path="/user/:username/lists" element={<UserLists />} />
+                <Route path="/recap" element={<Recap />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
