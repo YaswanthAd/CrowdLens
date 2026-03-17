@@ -38,3 +38,9 @@ export async function getFeed() {
   const res = await client.get('/reviews/feed/')
   return res.data
 }
+
+export async function getRecap(year) {
+  const params = year ? { year } : {}
+  const res = await client.get('/reviews/recap/', { params })
+  return res.data
+}
